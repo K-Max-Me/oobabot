@@ -291,7 +291,7 @@ class DiscordBot(discord.Client):
 
         image_task = None
         if self.image_generator is not None and image_prompt is not None:
-            image_task = self.image_generator.generate_image(
+            image_task = await self.image_generator.generate_image(
             image_prompt,
             raw_message,
             response_channel=response_channel,
@@ -675,17 +675,33 @@ class DiscordBot(discord.Client):
         """
         # This pattern uses a positive lookahead to keep the punctuation at the end of the sentence
         split_pattern = r'(?<=[.!?])\s+(?=[A-Z])'
-        # First, split the text by 'real' newlines to preserve them
+        text = text.replace("\n:", ":").replace(":\n", ":") #get rid of any new lines near colons. 
+
+        # First, split the text by 'real' newlines to preserve them        
         lines = text.split('\n')
         good_lines = []
         abort_response = False
 
-        for line in lines:
+        for line in lines:            
             # Split the line by the pattern to get individual sentences
             sentences = re.split(split_pattern, line)
             good_sentences = []
 
             for sentence in sentences:
+                
+                paragraph_pattern = re.compile(r'\"?.+[.!?*\"]$')
+                
+                # Bots will never leave out improper punctuation at an end of a paragraph. 
+                is_a_paragraph_match = paragraph_pattern.match(sentence.strip())
+
+                # get rid of lines that are not a sentence/full paragraphs with punctuation at the end. 
+                if not is_a_paragraph_match: 
+                    fancy_logger.get().warning(
+                        "Filtered out %s from response, because it's not a proper paragraph (bots shouldn't do this). continuing.",
+                        sentence,
+                    )
+                    continue 
+
                 # if the AI gives itself a second line, just ignore
                 # the line instruction and continue
                 if self.prompt_generator.bot_prompt_block in sentence:
@@ -706,15 +722,16 @@ class DiscordBot(discord.Client):
                             {
                                 templates.TemplateToken.NAME: name_identifier,
                             },
-                        ),
+                        ).replace("\n:", ":").replace(":\n", ":"),
                         templates.TemplateToken.MESSAGE: "",
                     },
-                ).strip()
+                ).strip() 
                 username_pattern = re.escape(username_pattern).replace(name_identifier, ".*")
-                message_pattern = re.compile(r'(' + username_pattern + r')\s*(.*)')
-                match = message_pattern.match(sentence)
+                username_pattern = ".*:\s|.*\n:\s" #.* replaces name_identifier
+                message_pattern = re.compile(r'(' + username_pattern + r')\s*(.*)')                        
+                match = message_pattern.match(sentence.strip())
                 if match:
-                    username_sequence, remaining_text = match.groups()
+                    username_sequence, remaining_text = match.groups()                    
                     bot_display_name_prompt = self.template_store.format(
                         templates.Templates.BOT_PROMPT_HISTORY_BLOCK,
                         {
@@ -723,10 +740,10 @@ class DiscordBot(discord.Client):
                                 {
                                     templates.TemplateToken.NAME: username_sequence,
                                 },
-                            ),
+                            ).replace("\n:", ":").replace(":\n", ":"),
                             templates.TemplateToken.MESSAGE: "",
                         },
-                    ).strip()
+                    ).strip()                    
                     ai_name_prompt = self.template_store.format(
                         templates.Templates.BOT_PROMPT_HISTORY_BLOCK,
                         {
@@ -735,25 +752,28 @@ class DiscordBot(discord.Client):
                                 {
                                     templates.TemplateToken.NAME: self.persona.ai_name,
                                 },
-                            ),
+                            ).replace("\n:", ":").replace(":\n", ":"),
                             templates.TemplateToken.MESSAGE: "",
                         },
-                    ).strip()
+                    ).strip()                    
 
-                    if username_sequence in bot_display_name_prompt or username_sequence in ai_name_prompt:
-                        # If the username matches the bot's name, trim the username portion and keep the remaining text
-                        fancy_logger.get().warning(
-                            "Filtered out %s from response, continuing", sentence
-                        )
-                        sentence = remaining_text  # Trim and keep the rest of the sentence
-                    else:
+                    fancy_logger.get().debug("sentence: %s", sentence.strip())
+                    fancy_logger.get().debug("username_sequence: %s, bot_display_name_prompt: %s, ai_name_prompt: %s, remaining_text: %s, pattern: %s", username_sequence,  bot_display_name_prompt, ai_name_prompt, remaining_text, r'(' + username_pattern + r')\s*(.*)')                    
+
+                    if username_sequence not in bot_display_name_prompt or username_sequence not in ai_name_prompt:
                         # If the username is not the bot's username, abort the response for breaking immersion
                         fancy_logger.get().warning(
-                            'Filtered out "%s" from response, aborting', sentence
+                            'Filtered out "%s" from response, aborting', sentence.strip()
                         )
                         abort_response = True
                         break  # Break out of the for-loop processing sentences
-
+                    else:
+                        # If the username matches the bot's name, trim the username portion and keep the remaining text
+                        fancy_logger.get().warning(
+                            "Filtered out %s from response, continuing", sentence.strip()
+                        )
+                        sentence = remaining_text  # Trim and keep the rest of the sentence
+                        
                 # look for partial stop markers within a sentence
                 for marker in self.stop_markers:
                     if marker in sentence:

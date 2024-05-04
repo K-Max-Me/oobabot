@@ -61,7 +61,7 @@ class PromptGenerator:
         self.example_dialogue = self.template_store.format(
             templates.Templates.EXAMPLE_DIALOGUE,
             {
-                templates.TemplateToken.AI_NAME: self.persona.ai_name,
+                templates.TemplateToken.AI_NAME: self.persona.ai_name.replace("\n:", "\n"),
             },
         ).strip()
 
@@ -70,13 +70,13 @@ class PromptGenerator:
         self.bot_name = self.template_store.format(
             templates.Templates.BOT_NAME,
             {
-                templates.TemplateToken.NAME: self.persona.ai_name,
+                templates.TemplateToken.NAME: self.persona.ai_name.replace("\n:", ":"),
             },
         )
         self.bot_prompt_block = self.template_store.format(
             templates.Templates.BOT_PROMPT_HISTORY_BLOCK,
             {
-                templates.TemplateToken.BOT_NAME: self.bot_name,
+                templates.TemplateToken.BOT_NAME: self.bot_name.replace("\n:", ":"),
                 templates.TemplateToken.MESSAGE: "",
             },
         ).strip()
@@ -84,7 +84,7 @@ class PromptGenerator:
         self.image_request_made = self.template_store.format(
             templates.Templates.PROMPT_IMAGE_COMING,
             {
-                templates.TemplateToken.AI_NAME: self.persona.ai_name,
+                templates.TemplateToken.AI_NAME: self.persona.ai_name.replace("\n:", ":"),
             },
         )
 
@@ -162,7 +162,7 @@ class PromptGenerator:
         section_separator = self.template_store.format(
             templates.Templates.SECTION_SEPARATOR,
             {
-                templates.TemplateToken.AI_NAME: self.persona.ai_name,
+                templates.TemplateToken.AI_NAME: self.persona.ai_name.replace("\n:", ":"),
             },
         )
 
@@ -179,8 +179,8 @@ class PromptGenerator:
                 line += self.template_store.format(
                     templates.Templates.BOT_PROMPT_HISTORY_BLOCK,
                     {
-                        templates.TemplateToken.BOT_NAME: self.bot_name,
-                        templates.TemplateToken.MESSAGE: message.body_text,
+                        templates.TemplateToken.BOT_NAME: self.bot_name.replace("\n:", ":"),
+                        templates.TemplateToken.MESSAGE: message.body_text.replace("\n:", ":"),
                     },
                 )
                 line += self.template_store.format(
@@ -198,10 +198,10 @@ class PromptGenerator:
                         templates.TemplateToken.USER_NAME: self.template_store.format(
                             templates.Templates.USER_NAME,
                             {
-                                templates.TemplateToken.NAME: message.author_name,
+                                templates.TemplateToken.NAME: message.author_name.replace("\n:", ":"),
                             },
                         ),
-                        templates.TemplateToken.MESSAGE: message.body_text,
+                        templates.TemplateToken.MESSAGE: message.body_text.replace("\n:", ":"),
                     },
                 )
                 line += self.template_store.format(
@@ -261,13 +261,13 @@ class PromptGenerator:
         prompt = self.template_store.format(
             templates.Templates.PROMPT,
             {
-                templates.TemplateToken.AI_NAME: self.persona.ai_name,
-                templates.TemplateToken.PERSONA: self.persona.persona,
-                templates.TemplateToken.MESSAGE_HISTORY: message_history_txt,
+                templates.TemplateToken.AI_NAME: self.persona.ai_name.replace("\n:", ":"),
+                templates.TemplateToken.PERSONA: self.persona.persona.replace("\n:", ":"),
+                templates.TemplateToken.MESSAGE_HISTORY: message_history_txt.replace("\n:", ":"),
                 templates.TemplateToken.SECTION_SEPARATOR: self.template_store.format(
                     templates.Templates.SECTION_SEPARATOR,
                     {
-                        templates.TemplateToken.AI_NAME: self.persona.ai_name,
+                        templates.TemplateToken.AI_NAME: self.persona.ai_name.replace("\n:", ":"),
                         templates.TemplateToken.CURRENTDATETIME: current_datetime,
                     },
                 ),
@@ -280,8 +280,8 @@ class PromptGenerator:
                     {},
                 ),
                 templates.TemplateToken.IMAGE_COMING: image_coming,
-                templates.TemplateToken.GUILDNAME: guild_name,
-                templates.TemplateToken.CHANNELNAME: response_channel,
+                templates.TemplateToken.GUILDNAME: guild_name.replace("\n:", ":"),
+                templates.TemplateToken.CHANNELNAME: response_channel.replace("\n:", ":"),
                 templates.TemplateToken.CURRENTDATETIME: current_datetime,
             },
         )
@@ -308,4 +308,4 @@ class PromptGenerator:
                 message_history,
             )
         image_coming = self.image_request_made if image_requested else ""
-        return self._generate(message_history_txt, image_coming, guild_name, response_channel)
+        return self._generate(message_history_txt.replace("\n:", ":"), image_coming, guild_name.replace("\n:", ":"), response_channel.replace("\n:", ":"))
